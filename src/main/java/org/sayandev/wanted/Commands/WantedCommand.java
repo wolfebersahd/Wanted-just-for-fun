@@ -170,30 +170,40 @@ public class WantedCommand implements CommandExecutor {
                         playerBossBarHashMap.get(player).setTitle(Messages.BossBar.TITLE
                                 .replace("%distance%", String.valueOf((int) playerDistance)));
 
-                        for (String barID : Main.getInstance().getConfig().getConfigurationSection("Wanted.TrackerBossBar.Custom").getKeys(false)) {
-                            int distance = Main.getInstance().getConfig().getInt("Wanted.TrackerBossBar.Custom." + barID + ".Distance");
-                            boolean isProgressive = Main.getInstance().getConfig().getBoolean("Wanted.TrackerBossBar.Custom." + barID + ".Progress");
-                            BarColor barColor = BarColor.valueOf(
-                                    Main.getInstance().getConfig().getString("Wanted.TrackerBossBar.Custom." + barID + ".Color"));
-                            BarStyle barStyle = BarStyle.valueOf(
-                                    Main.getInstance().getConfig().getString("Wanted.TrackerBossBar.Custom." + barID + ".Type"));
+                        ConfigurationSection customBars = Main.getInstance().getConfig()
+                                .getConfigurationSection("Wanted.TrackerBossBar.Custom");
 
-                            if ((int) playerDistance <= distance) {
-                                playerBar.setColor(barColor);
-                                playerBar.setStyle(barStyle);
-                                if (playerDistance <= 100) {
-                                    if (isProgressive)
-                                        playerBar.setProgress(playerDistance / 100);
+                        if (customBars != null) {
+                            List<String> sortedKeys = new ArrayList<>(customBars.getKeys(false));
+                            sortedKeys.sort(Comparator.comparingInt(key -> customBars.getInt(key + ".Distance")));
+
+                            for (String barID : sortedKeys) {
+                                try {
+                                    int distance = customBars.getInt(barID + ".Distance");
+                                    boolean isProgressive = customBars.getBoolean(barID + ".Progress");
+                                    BarColor barColor = BarColor.valueOf(customBars.getString(barID + ".Color").toUpperCase());
+                                    BarStyle barStyle = BarStyle.valueOf(customBars.getString(barID + ".Type").toUpperCase());
+
+                                    if ((int) playerDistance <= distance) {
+                                        playerBar.setColor(barColor);
+                                        playerBar.setStyle(barStyle);
+                                        if (playerDistance <= 100 && isProgressive) {
+                                            playerBar.setProgress(playerDistance / 100);
+                                        }
+                                        return;
+                                    }
+
+                                } catch (Exception e) {
+                                    Bukkit.getLogger().warning("[Wanted] Invalid TrackerBossBar config at Custom." + barID);
                                 }
-                                return;
                             }
-                            if (playerBar.getProgress() != 1) playerBar.setProgress(1);
                         }
 
-                        playerBossBarHashMap.get(player).setColor(BarColor.valueOf(
-                                Main.getInstance().getConfig().getString("Wanted.TrackerBossBar.Default.Color")));
-                        playerBossBarHashMap.get(player).setStyle(BarStyle.valueOf(
-                                Main.getInstance().getConfig().getString("Wanted.TrackerBossBar.Default.Type")));
+                        if (playerBar.getProgress() != 1) playerBar.setProgress(1);
+                        playerBar.setColor(BarColor.valueOf(
+                                Main.getInstance().getConfig().getString("Wanted.TrackerBossBar.Default.Color").toUpperCase()));
+                        playerBar.setStyle(BarStyle.valueOf(
+                                Main.getInstance().getConfig().getString("Wanted.TrackerBossBar.Default.Type").toUpperCase()));
                     }
                 }.runTaskTimerAsynchronously(Main.getInstance(), 0,
                         Main.getInstance().getConfig().getInt("Wanted.TrackerBossBar.RefreshInterval"));
